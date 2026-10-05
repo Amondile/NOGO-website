@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>NOGO – Find your assets</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#fff;--fg:#0a0a0a;--mute:#6b6b6b;--line:#e8e8e8;--soft:#f4f4f4;--ok:#16a34a;--blue:#2563eb;--blue-soft:#e8f0fe;--bad:#9ca3af;--nav:64px}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;color:var(--fg);background:var(--bg)}
+main{position:absolute;inset:0 0 calc(var(--nav) + env(safe-area-inset-bottom))}
+.view{display:none;position:absolute;inset:0;overflow:auto;padding:24px 20px;max-width:640px;margin:auto}
+.view.active{display:block}
+#view-map{max-width:none;padding:0;overflow:hidden}
+h1{font-size:28px;margin:8px 0 20px;letter-spacing:-.02em}
+#map{position:absolute;inset:0}
+.mono .leaflet-tile-pane{filter:grayscale(1) contrast(1.05)}
+.topbar{position:absolute;top:calc(12px + env(safe-area-inset-top));left:12px;right:12px;max-width:520px;margin:auto;z-index:500}
+.topbar input{width:100%;padding:14px 18px;border:0;border-radius:999px;font-size:16px;box-shadow:0 4px 18px #0002;outline:none}
+.results{background:#fff;border-radius:18px;margin-top:8px;box-shadow:0 4px 18px #0002;overflow:hidden}
+.results button{display:block;width:100%;text-align:left;padding:12px 18px;border:0;background:none;font-size:15px;border-bottom:1px solid var(--line)}
+.fab{color:var(--blue);position:absolute;right:14px;bottom:24px;z-index:500;width:48px;height:48px;border-radius:50%;border:0;background:#fff;font-size:22px;box-shadow:0 4px 18px #0003}
+.card{position:absolute;left:12px;right:12px;bottom:12px;max-width:520px;margin:auto;z-index:600;background:#fff;border-radius:24px;padding:18px;box-shadow:0 8px 30px #0003}
+.card.up ~ .fab{bottom:260px}
+.row{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.name{font-size:20px;font-weight:700;letter-spacing:-.01em}
+.sub{color:var(--mute);font-size:14px;margin-top:2px}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;padding:4px 10px;border-radius:999px;background:var(--soft)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--bad)}
+.pill.on .dot{background:var(--ok);box-shadow:0 0 0 3px #16a34a33}
+.loc{margin:12px 0;font-size:14px}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+.btn{flex:1;min-width:110px;padding:13px 16px;border-radius:14px;border:1px solid var(--line);background:var(--soft);font-size:15px;font-weight:600;cursor:pointer;color:var(--fg)}
+.btn.primary{background:var(--fg);color:#fff;border-color:var(--fg)}
+.btn.ring{flex-basis:100%;padding:16px;font-size:17px}
+.btn.ring.primary{background:var(--blue);border-color:var(--blue)}
+.btn.active{background:var(--blue);border-color:var(--blue);color:#fff}
+.btn:disabled{opacity:.5}
+.note{font-size:13px;color:var(--mute);margin:8px 0 0}
+.item{display:flex;gap:14px;align-items:center;padding:16px;border:1px solid var(--line);border-radius:20px;margin-bottom:12px;cursor:pointer}
+.ico{width:48px;height:48px;border-radius:14px;background:var(--soft);display:grid;place-items:center;font-size:22px}
+.pin{width:40px;height:40px;border-radius:50%;background:#fff;border:3px solid var(--fg);display:grid;place-items:center;font-size:18px;box-shadow:0 2px 8px #0004}
+.pin.off{border-color:var(--bad);opacity:.8}
+.pin.sel{background:var(--blue);border-color:var(--blue);transform:scale(1.2)}
+.form label{display:block;font-weight:600;font-size:14px;margin-bottom:16px}
+.form input,.form select{display:block;width:100%;margin-top:6px;padding:14px;font-size:16px;border:1px solid var(--line);border-radius:14px;background:#fff}
+.form .btn{width:100%}
+.err{color:#b91c1c;font-size:14px;min-height:18px;margin:0 0 8px}
+nav{position:absolute;left:0;right:0;bottom:0;height:calc(var(--nav) + env(safe-area-inset-bottom));padding-bottom:env(safe-area-inset-bottom);display:flex;background:#fff;border-top:1px solid var(--line);z-index:900}
+nav button{flex:1;border:0;background:none;font-size:12px;font-weight:600;color:var(--mute);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+nav button i{font-style:normal;font-size:22px}
+nav button.on{color:var(--blue)}
+.topbar input:focus{box-shadow:0 4px 18px #0002,0 0 0 2px var(--blue)}
+.form input:focus,.form select:focus{outline:2px solid var(--blue);outline-offset:0;border-color:var(--blue)}
+.empty{color:var(--mute);text-align:center;padding:40px 0}
+
+body.landing{overflow:auto;height:auto;min-height:100%;font-family:Nunito,system-ui,-apple-system,Segoe UI,sans-serif;background:#fff;scroll-behavior:smooth}
+.landing header{display:flex;justify-content:space-between;align-items:center;padding:16px 24px;max-width:1120px;margin:auto}
+.logo{font-weight:900;font-size:24px;letter-spacing:.04em;color:var(--fg);text-decoration:none;display:flex;align-items:center}
+.logo b{background:var(--blue);color:#fff;border-radius:10px;padding:2px 9px;margin-right:3px}
+.pill-btn{display:inline-block;padding:16px 32px;border-radius:999px;font-weight:800;font-size:17px;text-decoration:none;transition:transform .15s}
+.pill-btn:hover{transform:scale(1.03)}.pill-btn.sm{padding:10px 22px;font-size:15px}
+.pill-btn.blue{background:var(--blue);color:#fff}.pill-btn.dark{background:var(--fg);color:#fff}.pill-btn.light{background:var(--soft);color:var(--fg)}
+.hero{text-align:center;padding:40px 24px 0;max-width:1120px;margin:auto;overflow:hidden}
+.eyebrow{font-weight:800;color:var(--mute);margin:0 0 10px}
+.hero h1{font-size:clamp(44px,8vw,88px);line-height:1;letter-spacing:-.03em;font-weight:900;margin:0 0 20px}
+.lead{font-size:clamp(17px,2.4vw,22px);color:var(--mute);max-width:560px;margin:0 auto 28px;line-height:1.45;font-weight:500}
+.cta{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:48px}
+/* phone mockup (original, CSS-drawn) */
+.phone{width:min(320px,80vw);margin:0 auto -90px;background:#0a0a0a;border-radius:46px;padding:10px;box-shadow:0 30px 80px #0003}
+.screen{position:relative;height:520px;border-radius:37px;overflow:hidden;background:#ececec}
+.fmap{position:absolute;inset:0}
+.rd{position:absolute;background:#fff;display:block}
+.r1{left:-10%;right:-10%;top:30%;height:16px;transform:rotate(-12deg)}.r2{top:-10%;bottom:-10%;left:55%;width:14px;transform:rotate(8deg)}.r3{left:-10%;right:-10%;top:62%;height:10px;transform:rotate(6deg)}
+.blk{position:absolute;background:#e0e0e0;border-radius:14px;display:block}
+.b1{left:8%;top:8%;width:34%;height:16%}.b2{left:62%;top:40%;width:30%;height:14%}.b3{left:10%;top:44%;width:28%;height:12%}
+.mpin{position:absolute;width:42px;height:42px;border-radius:50%;background:#fff;border:3px solid #0a0a0a;display:grid;place-items:center;font-size:19px;box-shadow:0 3px 10px #0004}
+.mpin.p1{left:40%;top:28%;background:#2563eb;border-color:#2563eb;transform:scale(1.2)}.mpin.p2{left:18%;top:52%}.mpin.p3{left:68%;top:20%}
+.mpin.off{border-color:#9ca3af;opacity:.8}
+.mpin.p1:after{content:"";position:absolute;inset:-12px;border-radius:50%;border:2px solid #2563eb55;animation:pulse 2s infinite}
+@keyframes pulse{0%{transform:scale(.7);opacity:1}100%{transform:scale(1.5);opacity:0}}
+.msheet{position:absolute;left:10px;right:10px;bottom:10px;background:#fff;border-radius:26px;padding:16px;text-align:left;box-shadow:0 6px 24px #0003}
+.msheet b{font-size:17px;display:block}.msheet small{color:var(--mute);font-size:12px}
+.mrow{display:flex;justify-content:space-between;align-items:flex-start}
+.mon{display:inline-flex;align-items:center;gap:5px;background:var(--soft);border-radius:999px;padding:3px 9px;font-size:11px;font-weight:800}
+.mon s{width:7px;height:7px;border-radius:50%;background:var(--ok)}
+.mloc{display:block;margin:10px 0}
+.mring{background:#2563eb;color:#fff;text-align:center;font-weight:800;padding:12px;border-radius:16px;font-size:14px}
+.mbtns{display:flex;gap:6px;margin-top:6px}.mbtns span{flex:1;background:var(--soft);border-radius:14px;padding:9px;text-align:center;font-size:12px;font-weight:800}
+.wrap{max-width:1120px;margin:auto;padding:0 24px}
+#features{padding-top:170px;padding-bottom:20px}
+.wrap h2{font-size:clamp(32px,5vw,52px);line-height:1.08;letter-spacing:-.025em;font-weight:900;text-align:center;margin:0 0 36px}
+.tiles{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+.tile{background:var(--soft);border-radius:32px;padding:32px;min-height:240px}
+.ti{width:56px;height:56px;border-radius:50%;background:#fff;display:grid;place-items:center;font-size:24px;margin-bottom:60px;box-shadow:0 2px 8px #0001}
+.tile h3{font-size:26px;margin:0 0 8px;font-weight:900}.tile p{margin:0;color:var(--mute);font-size:17px;line-height:1.45;font-weight:500;max-width:360px}
+.steps{padding-top:80px}
+.srow{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.srow>div{padding:8px 16px;text-align:center}
+.srow span{display:inline-grid;place-items:center;width:48px;height:48px;border-radius:50%;background:var(--blue);color:#fff;font-weight:900;font-size:20px;margin-bottom:14px}
+.srow h3{margin:0 0 6px;font-size:22px;font-weight:900}.srow p{margin:0;color:var(--mute);font-weight:500}
+.authbox{margin:90px 0 60px;background:#0a0a0a;color:#fff;border-radius:40px;padding:48px;display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:center}
+.authbox h2{text-align:left;margin:0 0 12px}.atext p{color:#bbb;font-size:18px;margin:0;font-weight:500}
+.authbox .authcard{background:#fff;color:var(--fg);border-radius:28px;padding:20px}
+.tabs{display:flex;background:var(--soft);border-radius:999px;padding:4px;margin-bottom:20px}
+.tabs button{flex:1;border:0;background:none;padding:11px;border-radius:999px;font-weight:800;font-size:15px;color:var(--mute);cursor:pointer;font-family:inherit}
+.tabs button.on{background:#fff;color:var(--blue);box-shadow:0 1px 4px #0002}
+.authcard .btn{border-radius:999px;font-family:inherit;font-weight:800;padding:15px}
+.authcard .btn.primary{background:var(--blue);border-color:var(--blue)}
+.landing footer{text-align:center;color:var(--mute);font-size:13px;padding:24px;border-top:1px solid var(--line)}
+@media(max-width:760px){.tiles,.srow{grid-template-columns:1fr}.authbox{grid-template-columns:1fr;padding:28px;border-radius:32px}.ti{margin-bottom:28px}.tile{min-height:0}.screen{height:480px}}
+
+[hidden]{display:none!important}
+</style>
+</head>
+<body class="landing">
+<div id="pg-landing">
+<header>
+  <a class="logo" href="index.html"><b>N</b>OGO</a>
+  <a id="open-app" class="pill-btn dark sm" href="#auth">Log in</a>
+</header>
+
+<section class="hero">
+  <p class="eyebrow">NOGO Find</p>
+  <h1>Find what<br>matters most</h1>
+  <p class="lead">See your phone, car and bag on one simple map. Lost something? Ring it in one tap.</p>
+  <div class="cta"><a class="pill-btn blue" href="#auth">Get started</a><a class="pill-btn light" href="#features">See how it works</a></div>
+  <div class="phone" aria-hidden="true"><div class="screen">
+    <div class="fmap"><i class="rd r1"></i><i class="rd r2"></i><i class="rd r3"></i><i class="blk b1"></i><i class="blk b2"></i><i class="blk b3"></i>
+      <div class="mpin p1">📱</div><div class="mpin p2 off">🎒</div><div class="mpin p3">🚗</div></div>
+    <div class="msheet"><div class="mrow"><div><b>John's Phone</b><small>Phone</small></div><span class="mon"><s></s>Online</span></div>
+      <small class="mloc">📍 Near Main St · Updated just now</small>
+      <div class="mring">🔔 Ring phone</div><div class="mbtns"><span>Live Location</span><span>Directions</span></div></div>
+  </div></div>
+</section>
+
+<section id="features" class="wrap">
+  <h2>Everything you need.<br>Nothing you don't.</h2>
+  <div class="tiles">
+    <div class="tile"><div class="ti">⌖</div><h3>Locate</h3><p>Every asset on one clean, interactive map. Tap a marker to see where it is.</p></div>
+    <div class="tile"><div class="ti">●</div><h3>Live location</h3><p>Watch it move in real time, with online status and last-seen time.</p></div>
+    <div class="tile"><div class="ti">＋</div><h3>Add in seconds</h3><p>Name it, pick a type, enter the device ID. It appears on your map right away.</p></div>
+    <div class="tile"><div class="ti">🔔</div><h3>Ring your phone</h3><p>Misplaced it at home? Send a ring command from the map.</p></div>
+  </div>
+</section>
+
+<section class="wrap steps">
+  <h2>Three steps to found</h2>
+  <div class="srow"><div><span>1</span><h3>Add</h3><p>Register your phone, vehicle or tracker.</p></div>
+  <div><span>2</span><h3>Locate</h3><p>Pick it from the map or your list.</p></div>
+  <div><span>3</span><h3>Ring or navigate</h3><p>Make it ring, or get directions to it.</p></div></div>
+</section>
+
+<section class="wrap">
+  <div id="auth" class="authbox">
+    <div class="atext"><h2>Start finding</h2><p>Log in, or create your free account in a few seconds.</p></div>
+    <div class="authcard">
+      <div class="tabs"><button data-m="login" class="on">Log in</button><button data-m="signup">Create account</button></div>
+      <div class="form">
+        <label id="name-wrap" hidden>Name<input id="a-name" autocomplete="name" placeholder="Your name"></label>
+        <label>Email<input id="a-email" type="email" autocomplete="email" placeholder="you@example.com"></label>
+        <label>Password<input id="a-pass" type="password" autocomplete="current-password" placeholder="At least 8 characters"></label>
+        <p id="a-err" class="err"></p>
+        <button id="a-submit" class="btn primary">Log in</button>
+        <button id="a-demo" class="btn" style="margin-top:10px">Try the demo account</button>
+      </div>
+    </div>
+  </div>
+</section>
+<footer>© NOGO · Find your assets</footer>
+</div>
+<div id="pg-app" hidden>
+<main>
+  <section id="view-map" class="view active">
+    <div id="map"></div>
+    <div class="topbar">
+      <input id="search" type="search" placeholder="Search assets" autocomplete="off">
+      <div id="results" class="results" hidden></div>
+    </div>
+    <button id="locate" class="fab" aria-label="My location">◎</button>
+    <div id="card" class="card" hidden></div>
+  </section>
+  <section id="view-assets" class="view"><h1>Assets</h1><div id="list"></div></section>
+  <section id="view-add" class="view">
+    <h1>Add asset</h1>
+    <div class="form">
+      <label>Asset name<input id="f-name" placeholder="e.g. John's iPhone"></label>
+      <label>Asset type<select id="f-type"></select></label>
+      <label>Device ID<input id="f-device" placeholder="e.g. 358240051111110"></label>
+      <p id="f-err" class="err"></p>
+      <button id="f-submit" class="btn primary">Add Asset</button>
+    </div>
+  </section>
+  <section id="view-account" class="view"><h1>Account</h1><div id="account"></div></section>
+</main>
+<nav id="nav">
+  <button data-tab="map" class="on"><i>⌖</i>Map</button>
+  <button data-tab="assets"><i>☰</i>Assets</button>
+  <button data-tab="add"><i>＋</i>Add</button>
+  <button data-tab="account"><i>◯</i>Account</button>
+</nav>
+</div>
+<script>
+/* auth.js */
+/* NOGO auth service. UI uses ONLY NOGO.auth:
+ *   login(email,password) signup(name,email,password) -> User   logout()   getSession() -> User|null
+ * MockAuth keeps accounts in localStorage (DEMO ONLY: not secure, passwords are stored in plain text). */
+(function () {
+  window.NOGO = window.NOGO || {};
+  const USERS = 'nogo_users', SESSION = 'nogo_session';
+  const read = (k, d) => { try { const v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch (e) { return d; } };
+  const write = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+  const pub = (u) => ({ id: u.id, name: u.name, email: u.email });
+  const fail = (m) => { throw new Error(m); };
+
+  class MockAuth {
+    users() { let u = read(USERS, null); if (!u) { u = [{ id: 'u1', name: 'Demo User', email: 'demo@nogo.app', password: 'demo1234' }]; write(USERS, u); } return u; }
+    start(u) { write(SESSION, pub(u)); if (!read(SESSION, null)) fail('Your browser is blocking storage. Allow it and try again.'); return pub(u); }
+    async login(email, password) {
+      const u = this.users().find((x) => x.email === String(email).trim().toLowerCase() && x.password === password);
+      return u ? this.start(u) : fail('Incorrect email or password.');
+    }
+    async signup(name, email, password) {
+      email = String(email).trim().toLowerCase(); name = String(name).trim();
+      if (!name) fail('Please enter your name.');
+      if (!/^\S+@\S+\.\S+$/.test(email)) fail('Please enter a valid email.');
+      if (password.length < 8) fail('Password must be at least 8 characters.');
+      const users = this.users(); if (users.some((x) => x.email === email)) fail('An account with that email already exists.');
+      const u = { id: 'u_' + Date.now(), name, email, password }; users.push(u); write(USERS, users); return this.start(u);
+    }
+    async logout() { try { localStorage.removeItem(SESSION); } catch (e) {} }
+    async getSession() { return read(SESSION, null); }
+  }
+
+  /* Traccar mapping (same interface):
+   *  login   : POST /api/session  (form: email, password) -> user object, sets session cookie
+   *  signup  : POST /api/users {name,email,password}      (registration must be enabled on the server)
+   *  logout  : DELETE /api/session
+   *  getSession : GET /api/session -> user, or 401 -> null */
+  class TraccarAuth {
+    constructor(baseUrl) { this.baseUrl = baseUrl; }
+    async login() { fail('Not implemented'); } async signup() { fail('Not implemented'); }
+    async logout() { fail('Not implemented'); } async getSession() { fail('Not implemented'); }
+  }
+  NOGO.MockAuth = MockAuth; NOGO.TraccarAuth = TraccarAuth;
+  NOGO.auth = new MockAuth(); // swap: new TraccarAuth('https://your-traccar-host')
+})();
+
+/* models.js */
+/* NOGO data model. Plain objects + JSDoc, so any backend can map into these shapes.
+ * User          {id, name, email}
+ * Location      {lat, lng, address, updatedAt:ms}
+ * DeviceStatus  {online:boolean, lastSeen:ms, battery:0-100|null}
+ * Asset         {id, name, type, deviceId, location:Location|null, status:DeviceStatus}
+ * RingCommand   {id, assetId, status:'sending'|'ringing'|'stopped'|'failed', sentAt:ms, error?:string}
+ */
+window.NOGO = window.NOGO || {};
+NOGO.ASSET_TYPES = ['Phone', 'Vehicle', 'Tracker', 'Bag', 'Other'];
+NOGO.RING_STATUS = { SENDING: 'sending', RINGING: 'ringing', STOPPED: 'stopped', FAILED: 'failed' };
+NOGO.makeAsset = ({ id, name, type, deviceId, lat, lng, online = true, lastSeen = Date.now(), battery = null }) => ({
+  id: id || 'a_' + Math.random().toString(36).slice(2, 9),
+  name: String(name).trim(), type, deviceId: String(deviceId).trim(),
+  location: lat == null ? null : { lat, lng, address: 'Near ' + lat.toFixed(4) + ', ' + lng.toFixed(4), updatedAt: lastSeen },
+  status: { online, lastSeen, battery }
+});
+
+/* mock-data.js */
+NOGO.seed = {
+  user: { id: 'u1', name: 'Demo User', email: 'demo@nogo.app' },
+  assets: [
+    NOGO.makeAsset({ id: 'a1', name: "John's Phone", type: 'Phone', deviceId: 'PH-1001', lat: -26.2041, lng: 28.0473, battery: 82, lastSeen: Date.now() - 5000 }),
+    NOGO.makeAsset({ id: 'a2', name: 'Toyota Corolla', type: 'Vehicle', deviceId: 'VH-2002', lat: -26.1952, lng: 28.0340, battery: 100, lastSeen: Date.now() - 12000 }),
+    NOGO.makeAsset({ id: 'a3', name: 'My Backpack', type: 'Tracker', deviceId: 'TR-3003', lat: -26.2150, lng: 28.0600, online: false, lastSeen: Date.now() - 8 * 60000 })
+  ]
+};
+
+/* api.js */
+/* NOGO service layer. The UI calls ONLY NOGO.api. Interface:
+ *   getUser() -> User            listAssets() -> Asset[]
+ *   addAsset({name,type,deviceId}) -> Asset
+ *   subscribe(fn(asset)) -> unsubscribe     (live location / status pushes)
+ *   sendRing(assetId) -> RingCommand        stopRing(commandId) -> RingCommand
+ */
+(function () {
+  const clone = (o) => JSON.parse(JSON.stringify(o));
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  class MockProvider {
+    constructor() {
+      this.assets = clone(NOGO.seed.assets); this.subs = new Set(); this.rings = {};
+      this.timer = setInterval(() => this.#tick(), 3000);
+    }
+    #emit(a) { this.subs.forEach((f) => f(clone(a))); }
+    #tick() { // simulated GPS: online assets drift and refresh timestamps
+      this.assets.forEach((a) => {
+        if (!a.status.online || !a.location) return;
+        const step = a.type === 'Vehicle' ? 0.0007 : 0.0002, now = Date.now();
+        a.location.lat += (Math.random() - 0.5) * step * 2; a.location.lng += (Math.random() - 0.5) * step * 2;
+        a.location.address = 'Near ' + a.location.lat.toFixed(4) + ', ' + a.location.lng.toFixed(4);
+        a.location.updatedAt = a.status.lastSeen = now; this.#emit(a);
+      });
+    }
+    async getUser() { return NOGO.auth.getSession(); }
+    async listAssets() { await wait(50); return clone(this.assets); }
+    async addAsset({ name, type, deviceId }) {
+      if (!name || !deviceId || !NOGO.ASSET_TYPES.includes(type)) throw new Error('Name, type and device ID are required.');
+      if (this.assets.some((a) => a.deviceId.toLowerCase() === deviceId.trim().toLowerCase())) throw new Error('That device ID is already registered.');
+      await wait(200);
+      const base = this.assets[0].location; // new devices appear near the map centre until a real fix arrives
+      const a = NOGO.makeAsset({ name, type, deviceId, lat: base.lat + (Math.random() - .5) * .02, lng: base.lng + (Math.random() - .5) * .02, battery: 100 });
+      this.assets.push(a); return clone(a);
+    }
+    subscribe(fn) { this.subs.add(fn); return () => this.subs.delete(fn); }
+    // ---- RING: replace this pair with a real Android command later (FCM push / Traccar command) ----
+    async sendRing(assetId) {
+      const a = this.assets.find((x) => x.id === assetId);
+      const cmd = { id: 'r_' + Date.now(), assetId, status: NOGO.RING_STATUS.SENDING, sentAt: Date.now() };
+      if (!a || a.type !== 'Phone') throw Object.assign(new Error('Only phones can ring.'), { code: 'NOT_PHONE' });
+      await wait(900);
+      if (!a.status.online) { cmd.status = NOGO.RING_STATUS.FAILED; cmd.error = 'Phone is offline. Command not delivered.'; return cmd; }
+      cmd.status = NOGO.RING_STATUS.RINGING; this.rings[cmd.id] = cmd;
+      setTimeout(() => { if (this.rings[cmd.id]) this.rings[cmd.id].status = NOGO.RING_STATUS.STOPPED; }, 30000);
+      return clone(cmd);
+    }
+    async stopRing(id) { await wait(300); const c = this.rings[id] || { id }; c.status = NOGO.RING_STATUS.STOPPED; delete this.rings[id]; return clone(c); }
+  }
+
+  /* Traccar mapping (to implement next; same interface, UI untouched):
+   *  listAssets : GET /api/devices + GET /api/positions  -> Asset (device.status==='online' -> status.online)
+   *  addAsset   : POST /api/devices {name, uniqueId:deviceId, category:type.toLowerCase()}
+   *  subscribe  : WebSocket /api/socket -> {positions:[], devices:[]} -> fn(asset)
+   *  sendRing   : POST /api/commands/send {deviceId, type:'custom', attributes:{data:'NOGO_RING'}}
+   *               (needs an Android client app that handles the command) */
+  class TraccarProvider {
+    constructor(baseUrl) { this.baseUrl = baseUrl; }
+    async getUser() { throw new Error('Not implemented'); }
+    async listAssets() { throw new Error('Not implemented'); }
+    async addAsset() { throw new Error('Not implemented'); }
+    subscribe() { throw new Error('Not implemented'); }
+    async sendRing() { throw new Error('Not implemented'); }
+    async stopRing() { throw new Error('Not implemented'); }
+  }
+
+  NOGO.MockProvider = MockProvider; NOGO.TraccarProvider = TraccarProvider;
+  NOGO.api = new MockProvider(); // swap here: new TraccarProvider('https://your-traccar-host')
+})();
+
+/* config.js */
+/* Paste your Google Maps JavaScript API key between the quotes.
+ * Leave empty to fall back to the free OpenStreetMap map. */
+window.NOGO_CONFIG = { GOOGLE_MAPS_API_KEY: '' };
+
+/* map.js */
+/* Map adapter. app.js only uses this interface, so the map engine is swappable:
+ *   flyTo([lat,lng],zoom) panTo([lat,lng]) fitBounds([[lat,lng]..]) getZoom()
+ *   setMarker(id,[lat,lng],html,onClick) showMe([lat,lng]) invalidate() */
+(function () {
+  const CENTER = [-26.2041, 28.0473];
+  const loadScript = (src) => new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s); });
+  const banner = (msg) => { const d = document.createElement('div'); d.className = 'note'; d.style.cssText = 'position:absolute;z-index:700;left:12px;right:12px;top:70px;background:#fff;padding:10px 14px;border-radius:14px;box-shadow:0 2px 12px #0003'; d.textContent = msg; document.getElementById('view-map').appendChild(d); };
+
+  async function google(el, key, onDrag) {
+    window.gm_authFailure = () => banner('Google Maps rejected the API key. Check the key, billing and that "Maps JavaScript API" is enabled.');
+    await loadScript(`https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&loading=async&v=weekly`);
+    const { Map } = await google_.importLibrary('maps'), { AdvancedMarkerElement } = await google_.importLibrary('marker');
+    const map = new Map(el, { center: { lat: CENTER[0], lng: CENTER[1] }, zoom: 13, disableDefaultUI: true, gestureHandling: 'greedy', mapId: 'DEMO_MAP_ID' });
+    map.addListener('dragstart', onDrag);
+    const ll = (p) => ({ lat: p[0], lng: p[1] }), markers = {}; let me = null;
+    return {
+      flyTo: (p, z) => { map.panTo(ll(p)); if (z) map.setZoom(z); }, panTo: (p) => map.panTo(ll(p)), getZoom: () => map.getZoom(),
+      fitBounds: (pts) => { const b = new google_.LatLngBounds(); pts.forEach((p) => b.extend(ll(p))); map.fitBounds(b, 80); },
+      setMarker(id, p, html, onClick) {
+        if (!markers[id]) { const c = document.createElement('div'); c.style.transform = 'translateY(50%)';
+          markers[id] = new AdvancedMarkerElement({ map, position: ll(p), content: c }); markers[id].addListener('click', onClick); }
+        markers[id].position = ll(p); markers[id].content.innerHTML = html;
+      },
+      showMe(p) { const d = document.createElement('div'); d.style.cssText = 'width:18px;height:18px;border-radius:50%;background:#2563eb;border:3px solid #fff;box-shadow:0 0 6px #0006';
+        if (me) me.position = ll(p); else me = new AdvancedMarkerElement({ map, position: ll(p), content: d }); },
+      invalidate() {}
+    };
+  }
+  const google_ = { get importLibrary() { return window.google.maps.importLibrary; }, get LatLngBounds() { return window.google.maps.LatLngBounds; } };
+
+  /* Offline mock map: Google-Maps-style streets drawn locally (no network, no tiles, never blocked).
+   * Drag to pan, wheel / double-click / +- to zoom. Markers glide smoothly when their position updates. */
+  const TILE_INNER = `<rect width='600' height='600' fill='#eceef0'/><rect x='118' y='118' width='164' height='164' rx='12' fill='#cde9d3'/><g fill='#b7dcc0'><circle cx='150' cy='150' r='10'/><circle cx='240' cy='160' r='12'/><circle cx='170' cy='240' r='11'/><circle cx='245' cy='245' r='9'/></g><ellipse cx='200' cy='200' rx='30' ry='20' fill='#a9d3f3'/><g fill='none'><g stroke='#d3d6da'><path d='M0 300H600' stroke-width='38'/><path d='M300 0V600' stroke-width='30'/><path d='M0 100H600M0 500H600M100 0V600M500 0V600' stroke-width='16'/></g><path d='M0 300H600' stroke='#fbe39b' stroke-width='34'/><path d='M300 0V600' stroke='#fff' stroke-width='26'/><path d='M0 100H600M0 500H600M100 0V600M500 0V600' stroke='#fff' stroke-width='12'/></g>`;
+
+  async function mock(el, onDrag) {
+    const K = 12000, TILE = 0.01, Z0 = 11, Z1 = 17.5, S = (z) => K * Math.pow(2, z - 13), clamp = (z) => Math.max(Z0, Math.min(Z1, z));
+    const mk = (css) => { const d = document.createElement('div'); d.style.cssText = css; return d; };
+    el.innerHTML = ''; el.style.overflow = 'hidden'; el.style.touchAction = 'none'; el.style.background = '#eceef0';
+    const bg = mk('position:absolute;inset:0;cursor:grab');
+    bg.innerHTML = `<svg width="100%" height="100%" style="display:block"><defs><pattern id="nogo-tile" patternUnits="userSpaceOnUse" width="120" height="120" viewBox="0 0 600 600">${TILE_INNER}</pattern></defs><rect width="100%" height="100%" fill="url(#nogo-tile)"/></svg>`;
+    const pat = bg.querySelector('pattern');
+    const layer = mk('position:absolute;inset:0;pointer-events:none');
+    const zm = mk('position:absolute;right:12px;top:72px;z-index:400;display:flex;flex-direction:column;gap:1px;box-shadow:0 2px 10px #0003;border-radius:12px;overflow:hidden');
+    const note = mk('position:absolute;left:8px;bottom:6px;font:11px system-ui;color:#5f6368;background:#fffc;padding:1px 6px;border-radius:6px');
+    note.textContent = 'NOGO demo map · simulated';
+    [['+', 1], ['−', -1]].forEach(([t, d]) => { const b = document.createElement('button'); b.textContent = t; b.setAttribute('aria-label', d > 0 ? 'Zoom in' : 'Zoom out');
+      b.style.cssText = 'width:38px;height:38px;border:0;background:#fff;font-size:22px;color:#0a0a0a;cursor:pointer'; b.onclick = () => (tgt.z = clamp(tgt.z + d));
+      b.addEventListener('pointerdown', (e) => e.stopPropagation()); zm.appendChild(b); });
+    el.append(bg, layer, zm, note);
+    const cam = { lat: CENTER[0], lng: CENTER[1], z: 13 }, tgt = { ...cam }, marks = {}; let me = null, moved = 0, last = null, snapped = false;
+    const proj = (la, ln) => { const s = S(cam.z); return [(ln - cam.lng) * s + el.clientWidth / 2, (cam.lat - la) * s + el.clientHeight / 2]; };
+    function frame() {
+      ['lat', 'lng', 'z'].forEach((k) => { cam[k] += (tgt[k] - cam[k]) * 0.18; });
+      const s = S(cam.z), W = el.clientWidth, H = el.clientHeight, t = TILE * s;
+      pat.setAttribute('width', t); pat.setAttribute('height', t);
+      pat.setAttribute('x', (((W / 2 - cam.lng * s) % t) + t) % t); pat.setAttribute('y', (((H / 2 + cam.lat * s) % t) + t) % t);
+      for (const id in marks) { const m = marks[id]; m.lat += (m.tl - m.lat) * 0.06; m.lng += (m.tn - m.lng) * 0.06;
+        const [x, y] = proj(m.lat, m.lng); m.w.style.transform = `translate(${x}px,${y}px)`; }
+      if (me) { const [x, y] = proj(me.p[0], me.p[1]); me.w.style.transform = `translate(${x}px,${y}px)`; }
+      requestAnimationFrame(frame);
+    }
+    bg.addEventListener('pointerdown', (e) => { last = [e.clientX, e.clientY]; moved = 0; bg.style.cursor = 'grabbing'; });
+    window.addEventListener('pointermove', (e) => { if (!last) return; const dx = e.clientX - last[0], dy = e.clientY - last[1]; last = [e.clientX, e.clientY];
+      if (!moved) onDrag(); moved += Math.abs(dx) + Math.abs(dy); const s = S(cam.z);
+      cam.lng -= dx / s; cam.lat += dy / s; tgt.lng = cam.lng; tgt.lat = cam.lat; });
+    window.addEventListener('pointerup', () => { last = null; bg.style.cursor = 'grab'; });
+    el.addEventListener('wheel', (e) => { e.preventDefault(); tgt.z = clamp(tgt.z - Math.sign(e.deltaY) * 0.5); }, { passive: false });
+    bg.addEventListener('dblclick', () => (tgt.z = clamp(tgt.z + 1)));
+    requestAnimationFrame(frame);
+    return {
+      flyTo(p, z) { tgt.lat = p[0]; tgt.lng = p[1]; if (z) tgt.z = clamp(z); }, panTo(p) { tgt.lat = p[0]; tgt.lng = p[1]; }, getZoom: () => cam.z,
+      fitBounds(pts) {
+        const la = pts.map((p) => p[0]), ln = pts.map((p) => p[1]), W = el.clientWidth || 360, H = el.clientHeight || 600;
+        const sp = Math.max((Math.max(...ln) - Math.min(...ln)) * K / (W * 0.7), (Math.max(...la) - Math.min(...la)) * K / (H * 0.5), 1e-6);
+        tgt.lat = (Math.max(...la) + Math.min(...la)) / 2; tgt.lng = (Math.max(...ln) + Math.min(...ln)) / 2; tgt.z = clamp(13 - Math.log2(sp));
+        if (!snapped) { Object.assign(cam, tgt); snapped = true; }
+      },
+      setMarker(id, p, html, onClick) {
+        let m = marks[id];
+        if (!m) { const w = mk('position:absolute;left:0;top:0'), i = mk('transform:translate(-50%,-50%);cursor:pointer;pointer-events:auto');
+          w.appendChild(i); layer.appendChild(w); m = marks[id] = { w, i, lat: p[0], lng: p[1], html: '' };
+          i.addEventListener('click', () => { if (moved < 5) m.cb(); }); }
+        m.cb = onClick; m.tl = p[0]; m.tn = p[1]; if (m.html !== html) { m.html = html; m.i.innerHTML = html; }
+      },
+      showMe(p) { if (!me) { const w = mk('position:absolute;left:0;top:0'); w.appendChild(mk('width:18px;height:18px;margin:-9px;border-radius:50%;background:#2563eb;border:3px solid #fff;box-shadow:0 0 6px #0006')); layer.appendChild(w); me = { w }; } me.p = p; },
+      invalidate() {}
+    };
+  }
+
+  NOGO.createMap = async (el, { onDrag }) => {
+    const key = (window.NOGO_CONFIG || {}).GOOGLE_MAPS_API_KEY;
+    if (key) { try { return await google(el, key, onDrag); } catch (e) { banner('Could not load Google Maps. Showing the demo map.'); } }
+    return mock(el, onDrag);
+  };
+})();
+
+/* router */
+NOGO.go = async (page) => {
+  if (page === 'app' && !(await NOGO.auth.getSession())) page = 'landing';
+  const app = page === 'app';
+  document.getElementById('pg-app').hidden = !app; document.getElementById('pg-landing').hidden = app;
+  document.body.classList.toggle('landing', !app); window.scrollTo(0, 0);
+  if (app && NOGO.onEnterApp) await NOGO.onEnterApp();
+  if (!app) { const b = document.getElementById('open-app'); b.textContent = 'Log in'; b.href = '#auth'; b.onclick = null; }
+};
+/* landing */
+(function () {
+  const A = NOGO.auth, $ = (s) => document.querySelector(s); let mode = 'login';
+  A.getSession().then((u) => { if (u) { const b = $('#open-app'); b.textContent = 'Open app'; b.href = '#'; b.onclick = (e) => { e.preventDefault(); NOGO.go('app'); }; } });
+  function setMode(m) {
+    mode = m; document.querySelectorAll('.tabs button').forEach((b) => b.classList.toggle('on', b.dataset.m === m));
+    $('#name-wrap').hidden = m === 'login'; $('#a-submit').textContent = m === 'login' ? 'Log in' : 'Create account';
+    $('#a-pass').autocomplete = m === 'login' ? 'current-password' : 'new-password'; $('#a-err').textContent = '';
+  }
+  document.querySelectorAll('.tabs button').forEach((b) => (b.onclick = () => setMode(b.dataset.m)));
+  async function go(fn) {
+    const err = $('#a-err'), btns = document.querySelectorAll('#auth .btn'); err.textContent = ''; btns.forEach((b) => (b.disabled = true));
+    try { await fn(); $('#a-pass').value = ''; await NOGO.go('app'); } catch (e) { err.textContent = e.message; } btns.forEach((b) => (b.disabled = false));
+  }
+  $('#a-submit').onclick = () => go(() => mode === 'login' ? A.login($('#a-email').value, $('#a-pass').value) : A.signup($('#a-name').value, $('#a-email').value, $('#a-pass').value));
+  $('#a-demo').onclick = () => go(() => A.login('demo@nogo.app', 'demo1234'));
+  document.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.closest('#auth') && !e.target.closest('button')) $('#a-submit').click(); });
+})();
+
+/* app */
+/* NOGO UI. Talks to data ONLY through NOGO.api. */
+(function () {
+  const { api, ASSET_TYPES, RING_STATUS } = NOGO;
+  const $ = (s) => document.querySelector(s);
+  const ICON = { Phone: '📱', Vehicle: '🚗', Tracker: '📍', Bag: '🎒', Other: '📦' };
+  let assets = [], selId = null, follow = false, ring = null, me = null;
+  const markers = {};
+
+  // ---------- helpers ----------
+  const ago = (ts) => { const s = Math.max(0, Math.round((Date.now() - ts) / 1000));
+    return s < 5 ? 'just now' : s < 60 ? s + ' seconds ago' : s < 3600 ? Math.round(s / 60) + ' minutes ago' : Math.round(s / 3600) + ' hours ago'; };
+  const stamp = (a) => (a.status.online ? 'Updated ' : 'Last seen ') + ago(a.status.lastSeen);
+  const pill = (a) => `<span class="pill ${a.status.online ? 'on' : ''}"><span class="dot"></span>${a.status.online ? 'Online' : 'Offline'}</span>`;
+  const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const get = (id) => assets.find((a) => a.id === id);
+
+  // ---------- MAP (engine lives in js/map.js) ----------
+  let M = null;
+  const pinHtml = (a) => `<div class="pin ${a.status.online ? '' : 'off'} ${a.id === selId ? 'sel' : ''}">${ICON[a.type] || ICON.Other}</div>`;
+  function syncMarkers() {
+    if (!M) return;
+    assets.forEach((a) => { if (a.location) M.setMarker(a.id, [a.location.lat, a.location.lng], pinHtml(a), () => select(a.id, false)); });
+  }
+  $('#locate').onclick = () => navigator.geolocation
+    ? navigator.geolocation.getCurrentPosition((p) => { const ll = [p.coords.latitude, p.coords.longitude]; M.showMe(ll); M.flyTo(ll, 16); }, () => alert('Location permission denied.'))
+    : alert('Geolocation not supported.');
+
+  // ---------- SELECTED ASSET CARD ----------
+  function select(id, fly = true) {
+    selId = id; follow = false; const a = get(id);
+    if (fly && a && a.location) M.flyTo([a.location.lat, a.location.lng], Math.max(M.getZoom(), 16));
+    syncMarkers(); renderCard();
+  }
+  function renderCard() {
+    const el = $('#card'), a = get(selId); if (!a) { el.hidden = true; return; }
+    const loc = a.location;
+    let ringBtn = '', note = '';
+    if (a.type === 'Phone') {
+      const mine = ring && ring.assetId === a.id ? ring : null, st = mine && mine.status;
+      ringBtn = st === RING_STATUS.SENDING ? `<button class="btn primary ring" disabled>Sending ring command…</button>`
+        : st === RING_STATUS.RINGING ? `<button class="btn primary ring" data-act="stop">🔔 Ringing… tap to stop</button>`
+        : `<button class="btn primary ring" data-act="ring">🔔 Ring phone</button>`;
+      if (st === RING_STATUS.FAILED) note = `<p class="note">${esc(mine.error || 'Failed')}</p>`;
+    }
+    el.hidden = false;
+    el.innerHTML = `<div class="row"><div><div class="name">${esc(a.name)}</div><div class="sub">${a.type}</div></div>${pill(a)}</div>
+      <div class="loc">📍 ${loc ? esc(loc.address) : 'No location yet'}<div class="sub" data-ts="${a.status.lastSeen}" data-on="${a.status.online}">${stamp(a)}</div></div>
+      <div class="btns">${ringBtn}
+        <button class="btn ${follow ? 'active' : ''}" data-act="live">${follow ? '● Following live' : 'Live Location'}</button>
+        <button class="btn" data-act="dir">Directions</button></div>${note}`;
+  }
+  $('#card').onclick = async (e) => {
+    const act = e.target.closest('[data-act]')?.dataset.act, a = get(selId); if (!act || !a) return;
+    if (act === 'live') { follow = !follow; if (follow && a.location) M.flyTo([a.location.lat, a.location.lng], 17); renderCard(); }
+    if (act === 'dir' && a.location) window.open(`https://www.google.com/maps/dir/?api=1&destination=${a.location.lat},${a.location.lng}`, '_blank');
+    if (act === 'ring') {
+      ring = { assetId: a.id, status: RING_STATUS.SENDING }; renderCard();
+      try { ring = await api.sendRing(a.id); } catch (err) { ring = { assetId: a.id, status: RING_STATUS.FAILED, error: err.message }; }
+      renderCard();
+    }
+    if (act === 'stop' && ring) { ring = await api.stopRing(ring.id); renderCard(); }
+  };
+
+  // ---------- LIVE UPDATES ----------
+  api.subscribe((u) => {
+    const i = assets.findIndex((a) => a.id === u.id); if (i < 0) return; assets[i] = u;
+    syncMarkers(); if (follow && u.id === selId && u.location) M.panTo([u.location.lat, u.location.lng]);
+    if (u.id === selId) { const t = $('#card .loc div'); if (t) { t.dataset.ts = u.status.lastSeen; } }
+    renderList();
+  });
+  setInterval(() => { document.querySelectorAll('[data-ts]').forEach((n) => {
+    n.textContent = (n.dataset.on === 'true' ? 'Updated ' : 'Last seen ') + ago(+n.dataset.ts); }); }, 1000);
+
+  // ---------- SEARCH ----------
+  $('#search').oninput = (e) => {
+    const q = e.target.value.trim().toLowerCase(), box = $('#results');
+    const hits = q ? assets.filter((a) => (a.name + ' ' + a.type).toLowerCase().includes(q)) : [];
+    box.hidden = !q; box.innerHTML = hits.length ? hits.map((a) => `<button data-id="${a.id}">${ICON[a.type]} ${esc(a.name)} · ${a.type}</button>`).join('') : '<button disabled>No assets found</button>';
+  };
+  $('#results').onclick = (e) => { const id = e.target.dataset.id; if (!id) return; $('#search').value = ''; $('#results').hidden = true; select(id); };
+
+  // ---------- ASSETS LIST ----------
+  function renderList() {
+    const el = $('#list'); if (!assets.length) { el.innerHTML = '<p class="empty">No assets yet. Tap Add.</p>'; return; }
+    el.innerHTML = assets.map((a) => `<div class="item" data-id="${a.id}"><div class="ico">${ICON[a.type]}</div>
+      <div style="flex:1"><div class="name">${esc(a.name)}</div><div class="sub">${a.type}</div>
+      <div class="sub" data-ts="${a.status.lastSeen}" data-on="${a.status.online}">${stamp(a)}</div></div>${pill(a)}</div>`).join('');
+  }
+  $('#list').onclick = (e) => { const id = e.target.closest('.item')?.dataset.id; if (id) { tab('map'); select(id); } };
+
+  // ---------- ADD ASSET ----------
+  $('#f-type').innerHTML = ASSET_TYPES.map((t) => `<option>${t}</option>`).join('');
+  $('#f-submit').onclick = async () => {
+    const btn = $('#f-submit'), err = $('#f-err'); err.textContent = ''; btn.disabled = true;
+    try {
+      const a = await api.addAsset({ name: $('#f-name').value, type: $('#f-type').value, deviceId: $('#f-device').value });
+      assets.push(a); syncMarkers(); renderList(); renderAccount();
+      $('#f-name').value = $('#f-device').value = ''; tab('map'); select(a.id);
+    } catch (e) { err.textContent = e.message; }
+    btn.disabled = false;
+  };
+
+  // ---------- ACCOUNT ----------
+  let user = null;
+  function renderAccount() {
+    if (!user) return;
+    $('#account').innerHTML = `<div class="item" style="cursor:default"><div class="ico">◯</div><div><div class="name">${esc(user.name)}</div><div class="sub">${esc(user.email)}</div></div></div>
+      <div class="item" style="cursor:default"><div><div class="name">${assets.length} assets</div><div class="sub">${assets.filter((a) => a.status.online).length} online</div></div></div>
+      <button class="btn" id="logout" style="width:100%">Sign out</button><p class="note">Data source: ${api.constructor.name}</p>`;
+  }
+
+  $('#account').onclick = async (e) => { if (e.target.id === 'logout') { await NOGO.auth.logout(); NOGO.go('landing'); } };
+
+  // ---------- NAVIGATION ----------
+  function tab(name) {
+    document.querySelectorAll('.view').forEach((v) => v.classList.toggle('active', v.id === 'view-' + name));
+    document.querySelectorAll('nav button').forEach((b) => b.classList.toggle('on', b.dataset.tab === name));
+    if (name === 'map') setTimeout(() => M && M.invalidate(), 50);
+  }
+  document.querySelectorAll('nav button').forEach((b) => (b.onclick = () => tab(b.dataset.tab)));
+
+  NOGO.onEnterApp = async () => { user = await api.getUser(); renderAccount(); };
+
+  // ---------- BOOT ----------
+  (async () => {
+    M = await NOGO.createMap($('#map'), { onDrag: () => { if (follow) { follow = false; renderCard(); } } });
+    [user, assets] = await Promise.all([api.getUser(), api.listAssets()]);
+    syncMarkers(); renderList(); renderAccount();
+    const pts = assets.filter((a) => a.location).map((a) => [a.location.lat, a.location.lng]);
+    if (pts.length) M.fitBounds(pts);
+  })();
+})();
+</script>
+</body>
+</html>
