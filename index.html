@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NOGO – Find your assets</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="landing.css">
+</head>
+<body class="landing">
+<header>
+  <a class="logo" href="index.html"><b>N</b>OGO</a>
+  <a id="open-app" class="pill-btn dark sm" href="#auth">Log in</a>
+</header>
+
+<section class="hero">
+  <p class="eyebrow">NOGO Find</p>
+  <h1>Find what<br>matters most</h1>
+  <p class="lead">See your phone, car and bag on one simple map. Lost something? Ring it in one tap.</p>
+  <div class="cta"><a class="pill-btn blue" href="#auth">Get started</a><a class="pill-btn light" href="#features">See how it works</a></div>
+  <div class="phone" aria-hidden="true"><div class="screen">
+    <div class="fmap"><i class="rd r1"></i><i class="rd r2"></i><i class="rd r3"></i><i class="blk b1"></i><i class="blk b2"></i><i class="blk b3"></i>
+      <div class="mpin p1">📱</div><div class="mpin p2 off">🎒</div><div class="mpin p3">🚗</div></div>
+    <div class="msheet"><div class="mrow"><div><b>John's Phone</b><small>Phone</small></div><span class="mon"><s></s>Online</span></div>
+      <small class="mloc">📍 Near Main St · Updated just now</small>
+      <div class="mring">🔔 Ring phone</div><div class="mbtns"><span>Live Location</span><span>Directions</span></div></div>
+  </div></div>
+</section>
+
+<section id="features" class="wrap">
+  <h2>Everything you need.<br>Nothing you don't.</h2>
+  <div class="tiles">
+    <div class="tile"><div class="ti">⌖</div><h3>Locate</h3><p>Every asset on one clean, interactive map. Tap a marker to see where it is.</p></div>
+    <div class="tile"><div class="ti">●</div><h3>Live location</h3><p>Watch it move in real time, with online status and last-seen time.</p></div>
+    <div class="tile"><div class="ti">＋</div><h3>Add in seconds</h3><p>Name it, pick a type, enter the device ID. It appears on your map right away.</p></div>
+    <div class="tile"><div class="ti">🔔</div><h3>Ring your phone</h3><p>Misplaced it at home? Send a ring command from the map.</p></div>
+  </div>
+</section>
+
+<section class="wrap steps">
+  <h2>Three steps to found</h2>
+  <div class="srow"><div><span>1</span><h3>Add</h3><p>Register your phone, vehicle or tracker.</p></div>
+  <div><span>2</span><h3>Locate</h3><p>Pick it from the map or your list.</p></div>
+  <div><span>3</span><h3>Ring or navigate</h3><p>Make it ring, or get directions to it.</p></div></div>
+</section>
+
+<section class="wrap">
+  <div id="auth" class="authbox">
+    <div class="atext"><h2>Start finding</h2><p>Log in, or create your free account in a few seconds.</p></div>
+    <div class="authcard">
+      <div class="tabs"><button data-m="login" class="on">Log in</button><button data-m="signup">Create account</button></div>
+      <div class="form">
+        <label id="name-wrap" hidden>Name<input id="a-name" autocomplete="name" placeholder="Your name"></label>
+        <label>Email<input id="a-email" type="email" autocomplete="email" placeholder="you@example.com"></label>
+        <label>Password<input id="a-pass" type="password" autocomplete="current-password" placeholder="At least 8 characters"></label>
+        <p id="a-err" class="err"></p>
+        <button id="a-submit" class="btn primary">Log in</button>
+        <button id="a-demo" class="btn" style="margin-top:10px">Try the demo account</button>
+      </div>
+    </div>
+  </div>
+</section>
+<footer>© NOGO · Find your assets</footer>
+<script src="js/auth.js"></script>
+<script src="js/landing.js"></script>
+</body>
+</html>
