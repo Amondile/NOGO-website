@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>NOGO – Map</title>
 <script>document.documentElement.style.visibility="hidden"</script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -23,9 +22,17 @@
   <section id="view-add" class="view">
     <h1>Add asset</h1>
     <div class="form">
-      <label>Asset name<input id="f-name" placeholder="e.g. John's iPhone"></label>
-      <label>Asset type<select id="f-type"></select></label>
-      <label>Device ID<input id="f-device" placeholder="e.g. 358240051111110"></label>
+      <details class="sec" open><summary>Required</summary>
+        <label>Name<input id="f-name" placeholder="e.g. John's iPhone"></label>
+        <label>Asset type<select id="f-type"></select></label>
+        <label>Identifier<input id="f-device" placeholder="e.g. 358240051111110"></label>
+        <p class="hint">IMEI, serial number or other ID. It has to match the identifier the device reports to the server.</p>
+      </details>
+      <details class="sec"><summary>Extra</summary>
+        <label>Model<input id="f-model" placeholder="Optional"></label>
+        <label>Phone number<input id="f-phone" inputmode="tel" placeholder="Optional"></label>
+        <label>Contact<input id="f-contact" placeholder="Optional"></label>
+      </details>
       <p id="f-err" class="err"></p>
       <button id="f-submit" class="btn primary">Add Asset</button>
     </div>
@@ -38,12 +45,15 @@
   <button data-tab="add"><i>＋</i>Add</button>
   <button data-tab="account"><i>◯</i>Account</button>
 </nav>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="js/config.js"></script>
 <script src="js/auth.js"></script>
+<script src="js/traccar.js"></script>
+<script src="js/backend.js"></script>
 <script>NOGO.auth.getSession().then(function(u){if(!u)location.replace("index.html");else document.documentElement.style.visibility=""})</script>
 <script src="js/models.js"></script>
 <script src="js/mock-data.js"></script>
 <script src="js/api.js"></script>
+<script src="js/backend.js"></script>
 <script src="js/config.js"></script>
 <script src="js/map.js"></script>
 <script src="js/app.js"></script>
